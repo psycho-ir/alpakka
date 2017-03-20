@@ -114,6 +114,13 @@ lazy val awslambda = project
     Dependencies.AwsLambda
   )
 
+lazy val kairosdb = project
+  .enablePlugins(AutomateHeaderPlugin)
+  .settings(
+    name := "akka-stream-alpakka-kairosdb",
+    Dependencies.KairosDB
+  )
+
 lazy val docs = project
   .enablePlugins(ParadoxPlugin, NoPublish)
   .disablePlugins(BintrayPlugin)

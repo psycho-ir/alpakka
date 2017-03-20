@@ -26,3 +26,7 @@ services:
     image: deangiberson/aws-dynamodb-local
     ports:
       - "8001:8000"
+  kairossb:
+    image: ivangallego/kairosdb-docker
+    ports:
+      - "8080:8080"
