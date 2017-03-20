@@ -122,7 +122,9 @@ object Dependencies {
 
   val KairosDB = Seq (
     libraryDependencies ++= Seq (
-      "org.kairosdb"    % "client"  % "2.1.1"                   // ApacheV2
+      "org.kairosdb"    % "client"         % "2.1.1",           // ApacheV2
+      "org.mockito"     % "mockito-core"   % "2.3.7"    % Test  // MIT
+
     )
   )
 
