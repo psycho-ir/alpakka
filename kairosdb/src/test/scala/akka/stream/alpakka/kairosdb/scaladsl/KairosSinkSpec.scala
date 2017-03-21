@@ -10,7 +10,7 @@ import akka.stream.testkit.scaladsl.TestSource
 import org.kairosdb.client.HttpClient
 import org.kairosdb.client.builder.MetricBuilder
 import org.kairosdb.client.response.Response
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.{FlatSpec, Matchers, WordSpec}
 import org.mockito.Mockito._
 import org.mockito.ArgumentMatchers._
 import org.mockito.invocation.InvocationOnMock
@@ -21,50 +21,61 @@ import scala.concurrent.duration._
 import scala.concurrent.Await
 
 
-
 /**
  * Created by SOROOSH on 3/20/17.
  */
-class KairosSinkSpec extends FlatSpec with Matchers {
+class KairosSinkSpec extends WordSpec with Matchers {
 
   //#init-mat
   implicit val system = ActorSystem()
   implicit val mat = ActorMaterializer()
+  implicit val ec = system.dispatcher
   //#init-mat
 
-  it should "send a metric via http client" in {
-    val client = mock[HttpClient]
-    when(client.pushMetrics(any())).thenAnswer(
-      new Answer[AnyRef] {
-        override def answer(invocation: InvocationOnMock) = new Response(200)
-      }
-    )
-    val (probe, future) = TestSource.probe[MetricBuilder].toMat(KairosSink(client))(Keep.both).run()
-    val builder = MetricBuilder.getInstance()
-    probe.sendNext(builder).sendComplete()
-    Await.result(future, 1 second) shouldBe Done
+  "KairosSink" should {
+    "send a metric via http client" in {
 
-    verify(client,times(1)).pushMetrics(any())
-  }
+      val client = mock[HttpClient]
+      when(client.pushMetrics(any())).thenReturn(new Response(200))
 
-  it should "fail stage on http client error" in {
-    val client = mock[HttpClient]
-    when(client.pushMetrics(any())).thenAnswer(
-      new Answer[AnyRef] {
-        override def answer(invocation: InvocationOnMock) = throw new IOException("Fake IO error")
-      }
-    )
+      val (probe, future) = TestSource.probe[MetricBuilder].toMat(KairosSink(client))(Keep.both).run()
+      val builder = MetricBuilder.getInstance()
+      probe.sendNext(builder).sendComplete()
+      Await.result(future, 1 second) shouldBe Done
 
-    val (probe, future) = TestSource.probe[MetricBuilder].toMat(KairosSink(client))(Keep.both).run()
-    val builder = MetricBuilder.getInstance()
-
-    probe.sendNext(builder).sendComplete()
-    an[IOException] should be thrownBy {
-      Await.result(future, 1 second)
+      verify(client, times(1)).pushMetrics(any())
     }
 
-    verify(client,times(1)).pushMetrics(any())
-  }
+    "fail stage on http client error" in {
+      val client = mock[HttpClient]
+      when(client.pushMetrics(any())).thenThrow(new IOException("Fake IO error"))
 
+      val (probe, future) = TestSource.probe[MetricBuilder].toMat(KairosSink(client))(Keep.both).run()
+      val builder = MetricBuilder.getInstance()
+
+      probe.sendNext(builder).sendComplete()
+      an[IOException] should be thrownBy {
+        Await.result(future, 1 second)
+      }
+
+      verify(client, times(1)).pushMetrics(any())
+    }
+
+    "call client for each metric" in {
+      val client = mock[HttpClient]
+      when(client.pushMetrics(any())).thenReturn(new Response(200))
+
+      val (probe, future) = TestSource.probe[MetricBuilder].toMat(KairosSink(client))(Keep.both).run()
+      val builder = MetricBuilder.getInstance()
+      probe
+        .sendNext(builder)
+        .sendNext(builder)
+        .sendNext(builder)
+        .sendComplete()
+      Await.result(future, 1 second) shouldBe Done
+
+      verify(client, times(3)).pushMetrics(any())
+    }
+  }
 
 }
