@@ -9,10 +9,9 @@ import akka.stream.stage._
 import org.kairosdb.client.HttpClient
 import org.kairosdb.client.builder.MetricBuilder
 import org.kairosdb.client.response.Response
-
-import scala.concurrent.blocking
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
+import scala.concurrent.blocking
 
 final case class KairosSinkSettings(parallelism: Int) {
   require(parallelism > 0)
@@ -23,9 +22,9 @@ object KairosSinkSettings {
   val Defaults = KairosSinkSettings(1)
 }
 
-
-class KairosDBSinkStage(settings: KairosSinkSettings, kairosClient: HttpClient)(implicit executionContext: ExecutionContext)
-  extends GraphStageWithMaterializedValue[SinkShape[MetricBuilder], Future[Done]] {
+class KairosDBSinkStage(settings: KairosSinkSettings, kairosClient: HttpClient)(
+    implicit executionContext: ExecutionContext)
+    extends GraphStageWithMaterializedValue[SinkShape[MetricBuilder], Future[Done]] {
 
   val in: Inlet[MetricBuilder] = Inlet("KairosSink.in")
 
@@ -39,15 +38,15 @@ class KairosDBSinkStage(settings: KairosSinkSettings, kairosClient: HttpClient)(
   }
 }
 
-
 private[kairosdb] class KairosSinkStageLogic(
-                                              in: Inlet[MetricBuilder],
-                                              shape: SinkShape[MetricBuilder],
-                                              kairosClient: HttpClient,
-                                              promise: Promise[Done],
-                                              settings: KairosSinkSettings
-                                            )(implicit executionContext: ExecutionContext) extends GraphStageLogic(shape)
-  with StageLogging {
+    in: Inlet[MetricBuilder],
+    shape: SinkShape[MetricBuilder],
+    kairosClient: HttpClient,
+    promise: Promise[Done],
+    settings: KairosSinkSettings
+)(implicit executionContext: ExecutionContext)
+    extends GraphStageLogic(shape)
+    with StageLogging {
 
   private var runningPushes = 0
   private var isShutdownInProgress = false
@@ -56,18 +55,14 @@ private[kairosdb] class KairosSinkStageLogic(
 
   setHandler(in,
     new InHandler {
-      override def onPush() = {
-        triggerPushMetric()
-      }
+    override def onPush() =
+      triggerPushMetric()
 
-      override def onUpstreamFinish(): Unit = {
-        //        super.onUpstreamFinish()
-        isShutdownInProgress = true
-        tryShutdown()
-      }
+    override def onUpstreamFinish(): Unit = {
+      isShutdownInProgress = true
+      tryShutdown()
     }
-
-  )
+  })
 
   override def preStart(): Unit = {
     setKeepGoing(true)
@@ -80,7 +75,9 @@ private[kairosdb] class KairosSinkStageLogic(
     runningPushes += 1
     val builder = grab(in)
     val task = Future {
-      kairosClient.pushMetrics(builder)
+      blocking {
+        kairosClient.pushMetrics(builder)
+      }
     }
 
     task.onComplete {
@@ -101,12 +98,11 @@ private[kairosdb] class KairosSinkStageLogic(
   }
 
   private def tryPull(): Unit = if (runningPushes < settings.parallelism) {
-    println("pulling")
     pull(in)
   }
 
   private def handleFailure(t: Throwable): Unit = {
-    log.error(t, "KairosDB HttpClient failue: {}", t.getMessage)
+    log.error(t, "KairosDB HttpClient failure: {}", t.getMessage)
     runningPushes -= 1
     failStage(t)
     promise.tryFailure(t)

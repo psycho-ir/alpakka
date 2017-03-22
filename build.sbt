@@ -1,7 +1,7 @@
 lazy val alpakka = project
   .in(file("."))
   .enablePlugins(PublishUnidoc)
-  .aggregate(amqp, cassandra, dynamodb, files, ftp, hbase, jms, mqtt, s3, simpleCodecs, sqs, sse, awslambda)
+  .aggregate(amqp, cassandra, dynamodb, files, ftp, hbase, jms, mqtt, s3, simpleCodecs, sqs, sse, awslambda, kairosdb)
 
 lazy val amqp = project
   .enablePlugins(AutomateHeaderPlugin)
@@ -92,6 +92,20 @@ lazy val sse = project
     Dependencies.Sse
   )
 
+lazy val awslambda = project
+  .enablePlugins(AutomateHeaderPlugin)
+  .settings(
+    name := "akka-stream-alpakka-awslambda",
+    Dependencies.AwsLambda
+  )
+
+lazy val kairosdb = project
+  .enablePlugins(AutomateHeaderPlugin)
+  .settings(
+    name := "akka-stream-alpakka-kairosdb",
+    Dependencies.KairosDB
+  )
+
 val Local = config("local")
 val defaultParadoxSettings: Seq[Setting[_]] = Seq(
   paradoxTheme := Some(builtinParadoxTheme("generic")),
@@ -106,20 +120,6 @@ val defaultParadoxSettings: Seq[Setting[_]] = Seq(
   ),
   sourceDirectory := baseDirectory.value / "src" / "main"
 )
-
-lazy val awslambda = project
-  .enablePlugins(AutomateHeaderPlugin)
-  .settings(
-    name := "akka-stream-alpakka-awslambda",
-    Dependencies.AwsLambda
-  )
-
-lazy val kairosdb = project
-  .enablePlugins(AutomateHeaderPlugin)
-  .settings(
-    name := "akka-stream-alpakka-kairosdb",
-    Dependencies.KairosDB
-  )
 
 lazy val docs = project
   .enablePlugins(ParadoxPlugin, NoPublish)
