@@ -54,7 +54,7 @@ private[kairosdb] class KairosSinkStageLogic(
   extends GraphStageLogic(shape)
     with StageLogging {
 
-  implicit val ec: ExecutionContext = if (executionContext == NullExecutionContext) materializer.executionContext else executionContext
+  implicit lazy val ec: ExecutionContext = if (executionContext == NullExecutionContext) materializer.executionContext else executionContext
 
   private var runningPushes = 0
   private var isShutdownInProgress = false

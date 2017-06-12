@@ -29,7 +29,6 @@ class KairosSinkSpec extends WordSpec with Matchers with BeforeAndAfter {
   //#init-mat
   implicit val system = ActorSystem()
   implicit val mat = ActorMaterializer()
-  implicit val ec = system.dispatcher
   //#init-mat
 
   implicit val client = mock[HttpClient]
