@@ -4,14 +4,14 @@
 package akka.stream.alpakka.kairosdb
 
 import akka.Done
-import akka.stream.{Attributes, Inlet, SinkShape}
 import akka.stream.stage._
-import org.kairosdb.client.HttpClient
+import akka.stream.{Attributes, Inlet, SinkShape}
+import org.kairosdb.client.Client
 import org.kairosdb.client.builder.MetricBuilder
 import org.kairosdb.client.response.Response
-import scala.concurrent.{ExecutionContext, Future, Promise}
+
+import scala.concurrent._
 import scala.util.{Failure, Success}
-import scala.concurrent.blocking
 
 final case class KairosSinkSettings(parallelism: Int) {
   require(parallelism > 0)
@@ -22,9 +22,15 @@ object KairosSinkSettings {
   val Defaults = KairosSinkSettings(1)
 }
 
+private object NullExecutionContext extends ExecutionContext {
+  override def execute(runnable: Runnable): Unit = ???
+
+  override def reportFailure(cause: Throwable): Unit = ???
+}
+
 class KairosDBSinkStage(settings: KairosSinkSettings,
-                        kairosClient: HttpClient)(implicit executionContext: ExecutionContext)
-    extends GraphStageWithMaterializedValue[SinkShape[MetricBuilder], Future[Done]] {
+                        kairosClient: Client)(implicit executionContext: ExecutionContext = NullExecutionContext)
+  extends GraphStageWithMaterializedValue[SinkShape[MetricBuilder], Future[Done]] {
 
   val in: Inlet[MetricBuilder] = Inlet("KairosSink.in")
 
@@ -32,21 +38,23 @@ class KairosDBSinkStage(settings: KairosSinkSettings,
 
   override def createLogicAndMaterializedValue(inheritedAttributes: Attributes): (GraphStageLogic, Future[Done]) = {
     val promise = Promise[Done]()
-    val logic = new KairosSinkStageLogic(in, shape, kairosClient, promise, settings)
+    val logic = new KairosSinkStageLogic(in, shape, kairosClient, promise, settings)(executionContext)
 
     (logic, promise.future)
   }
 }
 
 private[kairosdb] class KairosSinkStageLogic(
-    in: Inlet[MetricBuilder],
-    shape: SinkShape[MetricBuilder],
-    kairosClient: HttpClient,
-    promise: Promise[Done],
-    settings: KairosSinkSettings
-)(implicit executionContext: ExecutionContext)
-    extends GraphStageLogic(shape)
+                                              in: Inlet[MetricBuilder],
+                                              shape: SinkShape[MetricBuilder],
+                                              kairosClient: Client,
+                                              promise: Promise[Done],
+                                              settings: KairosSinkSettings
+                                            )(executionContext: ExecutionContext)
+  extends GraphStageLogic(shape)
     with StageLogging {
+
+  implicit val ec: ExecutionContext = if (executionContext == NullExecutionContext) materializer.executionContext else executionContext
 
   private var runningPushes = 0
   private var isShutdownInProgress = false
@@ -101,7 +109,7 @@ private[kairosdb] class KairosSinkStageLogic(
   }
 
   private def handleFailure(t: Throwable): Unit = {
-    log.error(t, "KairosDB HttpClient failure: {}", t.getMessage)
+    log.error(t, "KairosDB Client failure: {}", t.getMessage)
     runningPushes -= 1
     failStage(t)
     promise.tryFailure(t)
