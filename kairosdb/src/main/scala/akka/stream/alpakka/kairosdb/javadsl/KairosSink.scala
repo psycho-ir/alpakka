@@ -15,10 +15,13 @@ import scala.concurrent.{ExecutionContext, Future}
  * Created by SOROOSH on 3/22/17.
  */
 object KairosSink {
+
   /**
    * Java API
    */
-  def create(settings: KairosSinkSettings, kairosClient: HttpClient, executionContext: ExecutionContext): Sink[MetricBuilder, Future[Done]] =
+  def create(settings: KairosSinkSettings,
+             kairosClient: HttpClient,
+             executionContext: ExecutionContext): Sink[MetricBuilder, Future[Done]] =
     Sink.fromGraph(new KairosDBSinkStage(settings, kairosClient)(executionContext))
 
   /**

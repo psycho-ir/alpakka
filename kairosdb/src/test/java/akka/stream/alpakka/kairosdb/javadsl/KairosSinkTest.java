@@ -56,7 +56,7 @@ public class KairosSinkTest {
     public static void setup() throws MalformedURLException {
         system = ActorSystem.create();
         materializer = ActorMaterializer.create(system);
-        client = new HttpClient("http://localhost:8080");
+        client = new HttpClient("http://127.0.0.1:9090");
 
     }
 

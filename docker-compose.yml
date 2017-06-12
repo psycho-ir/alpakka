@@ -25,7 +25,7 @@ services:
   kairossb:
     image: ivangallego/kairosdb-docker
     ports:
-      - "8080:8080"
+      - "9090:8080"
   geode:
     container_name: geode
     image: apachegeode/geode

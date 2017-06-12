@@ -22,8 +22,8 @@ object KairosSinkSettings {
   val Defaults = KairosSinkSettings(1)
 }
 
-class KairosDBSinkStage(settings: KairosSinkSettings, kairosClient: HttpClient)(
-    implicit executionContext: ExecutionContext)
+class KairosDBSinkStage(settings: KairosSinkSettings,
+                        kairosClient: HttpClient)(implicit executionContext: ExecutionContext)
     extends GraphStageWithMaterializedValue[SinkShape[MetricBuilder], Future[Done]] {
 
   val in: Inlet[MetricBuilder] = Inlet("KairosSink.in")
@@ -53,8 +53,7 @@ private[kairosdb] class KairosSinkStageLogic(
   private var successCallback: AsyncCallback[Response] = _
   private var failureCallback: AsyncCallback[Throwable] = _
 
-  setHandler(in,
-    new InHandler {
+  setHandler(in, new InHandler {
     override def onPush() =
       triggerPushMetric()
 
