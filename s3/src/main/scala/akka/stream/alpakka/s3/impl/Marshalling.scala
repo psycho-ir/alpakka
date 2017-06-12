@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Lightbend Inc. <http://www.lightbend.com>
+ * Copyright (C) 2016-2017 Lightbend Inc. <http://www.lightbend.com>
  */
 package akka.stream.alpakka.s3.impl
 
@@ -29,6 +29,22 @@ private[alpakka] object Marshalling {
           (x \ "Bucket").text,
           (x \ "Key").text,
           (x \ "ETag").text.drop(1).dropRight(1)
+        )
+    }
+  }
+
+  val isTruncated = "IsTruncated"
+  val continuationToken = "NextContinuationToken"
+  val key = "Key"
+
+  implicit val listBucketResultUnmarshaller: FromEntityUnmarshaller[ListBucketResult] = {
+    nodeSeqUnmarshaller(MediaTypes.`application/xml` withCharset HttpCharsets.`UTF-8`).map {
+      case NodeSeq.Empty => throw Unmarshaller.NoContentException
+      case x =>
+        ListBucketResult(
+          (x \ isTruncated).text == "true",
+          if ((x \ continuationToken).isEmpty) None else Some((x \ continuationToken).text),
+          (x \\ key).toSeq.map(_.text)
         )
     }
   }
